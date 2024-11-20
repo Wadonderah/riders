@@ -5,16 +5,16 @@ class CustomTextField extends StatefulWidget {
   TextEditingController? textEditingController;
   IconData? icon;
   String? hintString;
-  bool? isObscure = true;
-  bool? isEnabled = true;
+  bool isObscure;
+  bool isEnabled;
 
   CustomTextField({
     super.key,
     this.textEditingController,
     this.icon,
     this.hintString,
-    this.isObscure,
-    this.isEnabled,
+    this.isObscure = true,
+    this.isEnabled = true,
   });
 
   @override
@@ -37,7 +37,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
         style: const TextStyle(color: Colors.black),
         enabled: widget.isEnabled,
         controller: widget.textEditingController,
-        obscureText: widget.isObscure!,
+        obscureText: widget.isObscure,
         decoration: InputDecoration(
           border: InputBorder.none,
           prefixIcon: Icon(
@@ -46,7 +46,23 @@ class _CustomTextFieldState extends State<CustomTextField> {
           ),
           hintText: widget.hintString,
           hintStyle: const TextStyle(color: Colors.black54),
+          suffixIcon: widget.isObscure
+              ? IconButton(
+                  icon: const Icon(Icons.visibility),
+                  onPressed: () {
+                    setState(() {
+                      widget.isObscure = !widget.isObscure;
+                    });
+                  },
+                )
+              : null,
         ),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please enter some text';
+          }
+          return null;
+        },
       ),
     );
   }

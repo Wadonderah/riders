@@ -16,6 +16,36 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // List of dashboard items
+  final List<Map<String, dynamic>> dashboardItems = [
+    {
+      "title": "New Available Orders",
+      "icon": Icons.assignment,
+      "screen": const NewAvilableOrdersScreen()
+    },
+    {
+      "title": "Parcel in Progress",
+      "icon": Icons.airport_shuttle,
+      "screen": const ParcelInProgressScreen()
+    },
+    {
+      "title": "Not Yet Delivered",
+      "icon": Icons.location_history,
+      "screen": const NotYetDeliveredScreen()
+    },
+    {
+      "title": "History",
+      "icon": Icons.done_all,
+      "screen": const HistoryScreen()
+    },
+    {
+      "title": "Total Earnings",
+      "icon": Icons.monetization_on,
+      "screen": const TotalEarningsScreen()
+    },
+    {"title": "Logout", "icon": Icons.logout, "screen": null}, // Logout does not have a screen
+  ];
+
   Card dashboardItem(String title, IconData iconData, int index) {
     return Card(
       elevation: 2,
@@ -46,38 +76,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
         child: InkWell(
           onTap: () {
-            if (index == 0) {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (c) => const NewAvilableOrdersScreen()));
-            }
-            if (index == 1) {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (c) => const ParcelInProgressScreen()));
-            }
-            if (index == 2) {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (c) => const NotYetDeliveredScreen()));
-            }
-            if (index == 3) {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (c) => const HistoryScreen()));
-            }
-            if (index == 4) {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (c) => const TotalEarningsScreen()));
-            }
             if (index == 5) {
-              FirebaseAuth.instance.signOut();
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (c) => const SplashScreen()));
+              // Logout logic
+              _confirmLogout();
+            } else {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (c) => dashboardItems[index]["screen"]),
+              );
             }
           },
           child: Column(
@@ -95,17 +101,54 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 10.0),
               Center(
-                  child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16.0,
-                  color: Colors.white,
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16.0,
+                    color: Colors.white,
+                  ),
                 ),
-              )),
+              ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  void _confirmLogout() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                try {
+                  await FirebaseAuth.instance.signOut();
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (c) => const SplashScreen()),
+                  );
+                } catch (e) {
+                  // Handle sign-out error
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Error signing out: $e")),
+                  );
+                }
+              },
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -129,14 +172,13 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 6),
         child: GridView.count(
           crossAxisCount: 2,
-          children: [
-            dashboardItem("New Available Orders", Icons.assignment, 0),
-            dashboardItem("Parcel in progress", Icons.airport_shuttle, 1),
-            dashboardItem("Not Yet Delivered", Icons.location_history, 2),
-            dashboardItem("History", Icons.done_all, 3),
-            dashboardItem("Total Earnings", Icons.monetization_on, 4),
-            dashboardItem("Logout", Icons.logout, 5),
-          ],
+          children: List.generate(dashboardItems.length, (index) {
+            return dashboardItem(
+              dashboardItems[index]["title"],
+              dashboardItems[index]["icon"],
+              index,
+            );
+          }),
         ),
       ),
     );

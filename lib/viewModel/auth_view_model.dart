@@ -11,225 +11,124 @@ import '../global/global_instances.dart';
 import '../views/mainScreens/home_screen.dart';
 
 class AuthViewModel {
+  static const String usersCollection = "Users";
+  static const String ridersImagesPath = "RidersImages";
+
   Future<void> validateSignUpForm(XFile? image,
-      {XFile? imageFile,
-      required String name,
+      {required String name,
       required String email,
       required String password,
       required String confirmPassword,
       required BuildContext context,
       required String location,
       required String phone}) async {
-    // Check if image is null
     if (image == null) {
-      commonViewModel.showSnackBar("Please pick an image", context);
+      showSnackBar("Please pick an image", context);
       return;
     }
 
-    // Check if passwords match
     if (password != confirmPassword) {
-      commonViewModel.showSnackBar("Passwords don't match", context);
+      showSnackBar("Passwords don't match", context);
       return;
     }
 
-    // Check if all fields are filled
-    if (name.isEmpty ||
-        email.isEmpty ||
-        password.isEmpty ||
-        confirmPassword.isEmpty) {
-      commonViewModel.showSnackBar("Please fill all the fields", context);
+    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      showSnackBar("Please fill all the fields", context);
       return;
     }
 
-    // Create user
-    User? currentFirebaseUser =
-        await createUserInFirebaseAuth(email, password, context);
+    User? currentFirebaseUser = await createUserInFirebaseAuth(email, password, context);
 
     if (currentFirebaseUser != null) {
-      String downloadurl = await uploadImageToFirebase(image);
-
-      await saveDataToFirestore(
-          currentFirebaseUser,
-          name,
-          email,
-          password,
-          downloadurl,
-          // ignore: use_build_context_synchronously
-          context);
-
-      Navigator.pushAndRemoveUntil(
-        // ignore: use_build_context_synchronously
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-        (Route<dynamic> route) => false,
-      );
+      String downloadUrl = await uploadImageToFirebase(image);
+      await saveDataToFirestore(currentFirebaseUser, name, email, downloadUrl, context);
+      navigateToHome(context);
     }
-
-    // ignore: use_build_context_synchronously
-    commonViewModel.showSnackBar("Account created successfully", context);
+    showSnackBar("Account created successfully", context);
   }
 
-  Future<void> loginUser(
-      String email, String password, BuildContext context) async {
+  Future<void> loginUser(String email, String password, BuildContext context) async {
     try {
-      // ignore: unused_local_variable
-      UserCredential userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password);
-
-      // Show success message
-      // ignore: use_build_context_synchronously
-      commonViewModel.showSnackBar("Sign in successful", context);
-
-      Navigator.pushAndRemoveUntil(
-        // ignore: use_build_context_synchronously
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-        (Route<dynamic> route) => false,
-      );
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
+      showSnackBar("Sign in successful", context);
+      navigateToHome(context);
     } catch (error) {
-      // ignore: use_build_context_synchronously
-      commonViewModel.showSnackBar(error.toString(), context);
+      showSnackBar(error.toString(), context);
     }
   }
 
-  Future<User?> createUserInFirebaseAuth(
-      String email, String password, BuildContext context) async {
-    User? currentFirebaseUser;
-
+  Future<User?> createUserInFirebaseAuth(String email, String password, BuildContext context) async {
     try {
-      UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
-      currentFirebaseUser = userCredential.user;
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: password);
+      return userCredential.user;
     } catch (error) {
-      // ignore: use_build_context_synchronously
-      commonViewModel.showSnackBar(error.toString(), context);
+      showSnackBar(error.toString(), context);
+      return null;
     }
-
-    return currentFirebaseUser;
   }
 
   Future<String> uploadImageToFirebase(XFile? imageXFile) async {
-    String downloadurl = "";
+    String downloadUrl = "";
     String fileName = DateTime.now().microsecondsSinceEpoch.toString();
-    firebase_storage.Reference storageRef = firebase_storage
-        .FirebaseStorage.instance
-        .ref()
-        .child("RidersImages")
-        .child(fileName);
+    firebase_storage.Reference storageRef = firebase_storage.FirebaseStorage.instance.ref().child(ridersImagesPath).child(fileName);
 
     try {
-      firebase_storage.UploadTask uploadTask =
-          storageRef.putFile(File(imageXFile!.path));
-
-      firebase_storage.TaskSnapshot taskSnapshot =
-          await uploadTask.whenComplete(() => {});
-
-      downloadurl = await taskSnapshot.ref.getDownloadURL();
+      firebase_storage.UploadTask uploadTask = storageRef.putFile(File(imageXFile!.path));
+      firebase_storage.TaskSnapshot taskSnapshot = await uploadTask.whenComplete(() => {});
+      downloadUrl = await taskSnapshot.ref.getDownloadURL();
     } catch (error) {
       print('Error uploading image: $error');
     }
 
-    return downloadurl;
+    return downloadUrl;
   }
 
-  Future<void> saveDataToFirestore(
-      User? currentFirebaseUser,
-      String name,
-      String email,
-      String password,
-      String downloadurl,
-      BuildContext context) async {
+  Future<void> saveDataToFirestore(User? currentFirebaseUser, String name, String email, String downloadUrl, BuildContext context) async {
     if (currentFirebaseUser != null) {
       try {
-        await FirebaseFirestore.instance
-            .collection("Users")
-            .doc(currentFirebaseUser.uid)
-            .set({
+        await FirebaseFirestore.instance.collection(usersCollection).doc(currentFirebaseUser.uid).set({
           "sellerUID": currentFirebaseUser.uid,
           "sellerEmail": email,
           "sellerName": name,
-          "image": downloadurl,
+          "image": downloadUrl,
           "status": "approved",
           "userCart": ["garbageValue"],
         });
 
-        SharedPreferences sharedPreferences =
-            await SharedPreferences.getInstance();
+        SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
         await sharedPreferences.setString("uid", currentFirebaseUser.uid);
         await sharedPreferences.setString("email", email);
         await sharedPreferences.setString("name", name);
         await sharedPreferences.setStringList("userCart", ["garbageValue"]);
       } catch (error) {
-        // ignore: use_build_context_synchronously
-        commonViewModel.showSnackBar("Error saving data: $error", context);
+        showSnackBar("Error saving data: $error", context);
       }
     }
   }
 
-  Future<void> validateSignInForm(
-      String email, String password, BuildContext context) async {
+  Future<void> validateSignInForm(String email, String password, BuildContext context) async {
     if (email.isNotEmpty && password.isNotEmpty) {
-      commonViewModel.showSnackBar("Checking credentials....", context);
+      showSnackBar("Checking credentials....", context);
 
       try {
-        // Authenticate the user with Firebase
-        UserCredential userCredential = await FirebaseAuth.instance
-            .signInWithEmailAndPassword(email: email, password: password);
-
-        // Get the user ID
+        UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
         String uid = userCredential.user?.uid ?? '';
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection(usersCollection).doc(uid).get();
 
-        // Retrieve user data from Firestore
-        DocumentSnapshot userDoc =
-            await FirebaseFirestore.instance.collection('Users').doc(uid).get();
-
-        // Check if the user is approved
         if (userDoc.exists && userDoc['status'] == 'approved') {
-          // Show success message
-          // ignore: use_build_context_synchronously
-          commonViewModel.showSnackBar("Sign in successful", context);
-
-          // Ask the user if they want to stay logged in
-          // ignore: use_build_context_synchronously
+          showSnackBar("Sign in successful", context);
           bool stayLoggedIn = await showStayLoggedInDialog(context);
-
-          if (stayLoggedIn) {
-            // Save the user's session using SharedPreferences or a similar method
-            SharedPreferences sharedPreferences =
-                await SharedPreferences.getInstance();
-            await sharedPreferences.setBool('stayLoggedIn', true);
-          } else {
-            // Remove any stored session
-            SharedPreferences sharedPreferences =
-                await SharedPreferences.getInstance();
-            await sharedPreferences.setBool('stayLoggedIn', false);
-          }
-
-          // Navigate to the home screen
-          Navigator.pushAndRemoveUntil(
-            // ignore: use_build_context_synchronously
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-            (Route<dynamic> route) => false,
-          );
+          await saveStayLoggedInPreference(stayLoggedIn);
+          navigateToHome(context);
         } else {
-          // Show error if user is not approved
-          // ignore: use_build_context_synchronously
-          commonViewModel.showSnackBar(
-              // ignore: use_build_context_synchronously
-              "Your account is not approved.",
-              // ignore: use_build_context_synchronously
-              context);
-          FirebaseAuth.instance.signOut(); // Sign out the user
+          showSnackBar("Your account is not approved.", context);
+          FirebaseAuth.instance.signOut();
         }
       } catch (error) {
-        // Handle any errors
-        // ignore: use_build_context_synchronously
-        commonViewModel.showSnackBar(error.toString(), context);
+        showSnackBar(error.toString(), context);
       }
     } else {
-      commonViewModel.showSnackBar("Password and Email required", context);
-      return;
+      showSnackBar("Password and Email required", context);
     }
   }
 
@@ -261,5 +160,22 @@ class AuthViewModel {
       },
     );
     return stayLoggedIn;
+  }
+
+  Future<void> saveStayLoggedInPreference(bool stayLoggedIn) async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    await sharedPreferences.setBool('stayLoggedIn', stayLoggedIn);
+  }
+
+  void navigateToHome(BuildContext context) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+      (Route<dynamic> route) => false,
+    );
+  }
+
+  void showSnackBar(String message, BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }

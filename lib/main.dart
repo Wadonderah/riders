@@ -7,16 +7,26 @@ import 'global/global_vars.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp().catchError((error) {
+    // Handle Firebase initialization error
+    print("Firebase initialization error: $error");
+  });
 
   sharedPreferences = await SharedPreferences.getInstance();
 
-  await Permission.locationWhenInUse.isDenied.then((valueOfPermission) {
-    if (valueOfPermission) {
-      Permission.locationWhenInUse.request();
-    }
-  });
+  await requestLocationPermission();
   runApp(const MyApp());
+}
+
+// New method for handling location permission
+Future<void> requestLocationPermission() async {
+  var status = await Permission.locationWhenInUse.status;
+  if (status.isDenied) {
+    await Permission.locationWhenInUse.request().catchError((error) {
+      // Handle permission request error
+      print("Location permission request error: $error");
+    });
+  }
 }
 
 class MyApp extends StatelessWidget {

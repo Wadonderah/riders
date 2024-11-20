@@ -23,12 +23,30 @@ class _SignupScreenState extends State<SignupScreen> {
   TextEditingController nameController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
   TextEditingController locationController = TextEditingController();
+  bool isLoading = false; // Loading state
+
+  @override
+  void dispose() {
+    // Dispose of controllers
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    nameController.dispose();
+    phoneController.dispose();
+    locationController.dispose();
+    super.dispose();
+  }
 
   pickImageFromGallery() async {
-    imageFile = await picker.pickImage(source: ImageSource.gallery);
-    setState(() {
-      // Updates the UI when the image is picked
-    });
+    try {
+      imageFile = await picker.pickImage(source: ImageSource.gallery);
+      setState(() {
+        // Updates the UI when the image is picked
+      });
+    } catch (e) {
+      // Handle any errors that occur during image picking
+      print("Error picking image: $e");
+    }
   }
 
   @override
@@ -140,18 +158,41 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: () async {
-                    await authViewModel.validateSignUpForm(
-                      imageFile,
-                      name: nameController.text.trim(),
-                      email: emailController.text.trim(),
-                      password: passwordController.text.trim(),
-                      confirmPassword: confirmPasswordController.text.trim(),
-                      phone: phoneController.text.trim(),
-                      location: locationController.text.trim(),
-                      context: context,
-                    );
-                  },
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (formkey.currentState!.validate()) {
+                            // Add validation for password match
+                            if (passwordController.text.trim() !=
+                                confirmPasswordController.text.trim()) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Passwords do not match!"),
+                                ),
+                              );
+                              return;
+                            }
+
+                            setState(() {
+                              isLoading = true; // Start loading
+                            });
+
+                            await authViewModel.validateSignUpForm(
+                              imageFile,
+                              name: nameController.text.trim(),
+                              email: emailController.text.trim(),
+                              password: passwordController.text.trim(),
+                              confirmPassword: confirmPasswordController.text.trim(),
+                              phone: phoneController.text.trim(),
+                              location: locationController.text.trim(),
+                              context: context,
+                            );
+
+                            setState(() {
+                              isLoading = false; // Stop loading
+                            });
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blueAccent,
                     padding: const EdgeInsets.symmetric(
@@ -162,15 +203,19 @@ class _SignupScreenState extends State<SignupScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    'Signup',
-                    style: TextStyle(
-                      letterSpacing: 0,
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: isLoading // Show loading indicator
+                      ? const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        )
+                      : const Text(
+                          'Signup',
+                          style: TextStyle(
+                            letterSpacing: 0,
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ],
             ),

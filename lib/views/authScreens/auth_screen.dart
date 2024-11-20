@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:riders_app/views/authScreens/signin_screen.dart';
 import 'package:riders_app/views/authScreens/signup_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
+import '../mainScreens/home_screen.dart'; // Import HomeScreen
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -10,6 +12,18 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Listen to authentication state changes
+    FirebaseAuth.instance.authStateChanges().listen((User? user) {
+      if (user != null) {
+        // User is signed in, navigate to home screen
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()));
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(

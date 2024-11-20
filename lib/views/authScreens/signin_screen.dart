@@ -13,6 +13,14 @@ class _SigninScreenState extends State<SigninScreen> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   GlobalKey<FormState> formkey = GlobalKey<FormState>();
+  bool isLoading = false; // Loading state
+
+  @override
+  void dispose() {
+    emailController.dispose(); // Dispose of controllers
+    passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,12 +67,20 @@ class _SigninScreenState extends State<SigninScreen> {
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: () {
-                    authViewModel.validateSignInForm(
-                      emailController.text.trim(),
-                      passwordController.text.trim(),
-                      context,
-                    );
+                  onPressed: isLoading ? null : () async { // Disable button while loading
+                    if (formkey.currentState!.validate()) {
+                      setState(() {
+                        isLoading = true; // Start loading
+                      });
+                      await authViewModel.validateSignInForm(
+                        emailController.text.trim(),
+                        passwordController.text.trim(),
+                        context,
+                      );
+                      setState(() {
+                        isLoading = false; // Stop loading
+                      });
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blueAccent,
@@ -76,15 +92,19 @@ class _SigninScreenState extends State<SigninScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    'Login',
-                    style: TextStyle(
-                      letterSpacing: 0,
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: isLoading // Show loading indicator
+                      ? const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        )
+                      : const Text(
+                          'Login',
+                          style: TextStyle(
+                            letterSpacing: 0,
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ],
             ),

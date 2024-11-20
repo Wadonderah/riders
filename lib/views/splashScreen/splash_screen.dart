@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../authScreens/auth_screen.dart';
 import '../mainScreens/home_screen.dart';
@@ -14,8 +15,21 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    initTimer();
+  }
+
   initTimer() {
     Timer(const Duration(seconds: 3), () async {
+      await FirebaseAuth.instance.userChanges().first;
+
+      var status = await Permission.locationWhenInUse.status;
+      if (status.isDenied) {
+        await Permission.locationWhenInUse.request();
+      }
+
       if (FirebaseAuth.instance.currentUser == null) {
         Navigator.pushReplacement(context,
             MaterialPageRoute(builder: (context) => const AuthScreen()));
@@ -24,15 +38,6 @@ class _SplashScreenState extends State<SplashScreen> {
             MaterialPageRoute(builder: (context) => const HomeScreen()));
       }
     });
-  }
-
-  @override
-  void initState() {
-    // TODO: implement initState
-
-    super.initState();
-
-    initTimer();
   }
 
   @override
